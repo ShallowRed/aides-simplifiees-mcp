@@ -1,0 +1,71 @@
+name: Architecture Analysis
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "app/**"
+      - "pages/**"
+      - "components/**"
+  schedule:
+    # Run weekly on Monday at 9am
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+jobs:
+  analyze-architecture:
+    name: Analyze Code Architecture
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install MCP agent dependencies
+        run: |
+          cd /tmp
+          git clone https://github.com/betagouv/aides-simplifiees-mcp.git
+          cd aides-simplifiees-mcp
+          npm ci
+          npm run build
+
+      - name: Analyze repository
+        run: |
+          cd /tmp/aides-simplifiees-mcp
+          npm run dev:cli analyze-arch ${{ github.repository_owner }} ${{ github.event.repository.name }} ${{ github.ref_name }} > arch-report.txt 2>&1 || true
+          cat arch-report.txt
+
+      - name: Upload architecture report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-report
+          path: /tmp/aides-simplifiees-mcp/arch-report.txt
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('/tmp/aides-simplifiees-mcp/arch-report.txt', 'utf8');
+            
+            const match = report.match(/Score de santé: (\d+)\/100/);
+            const score = match ? match[1] : 'N/A';
+            
+            let emoji = '✅';
+            if (score < 70) emoji = '⚠️';
+            if (score < 50) emoji = '❌';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ${emoji} Architecture Analysis\n\n**Health Score: ${score}/100**\n\n<details>\n<summary>Full Report</summary>\n\n\`\`\`\n${report}\n\`\`\`\n</details>`
+            });

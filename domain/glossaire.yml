@@ -1,0 +1,198 @@
+meta:
+  version: 1.0.0
+  language: fr
+  default_casing:
+    code_ts: camelCase
+    data_json: snake_case
+    db_sql: snake_case
+    ui_label: sentence
+  currency: EUR
+  date_format: YYYY-MM-DD
+  numeric_format: dot_decimal
+  geography:
+    canonical: code_insee_commune
+    fallbacks: [code_postal]
+  pii_policy:
+    nir: forbidden
+    ine: forbidden
+
+conventions:
+  - name: "Termes canoniques"
+    rule: "Utiliser 'foyer' (pas 'ménage'); 'ressources' comme concept; préférer INSEE."
+  - name: "Unités monétaires"
+    rule: "Mensuel par défaut; suffixer _12m pour une agrégation sur 12 mois."
+  - name: "Intervalles"
+    rule: "Seuils inclusifs (<=) par défaut; dévier = préciser dans la règle."
+  - name: "IDs et slugs"
+    rule: "IDs JSON et règles en snake_case; pas de tirets - ; pas d’accents."
+
+entities:
+  - term_fr: Foyer
+    slug: foyer
+    definition_fr: "Unité familiale de référence pour l’évaluation des aides."
+    fields: [foyer_taille, nb_enfants, situation_matrimoniale, composition]
+
+  - term_fr: Bénéficiaire
+    slug: beneficiaire
+    fields: [date_naissance, statut_professionnel, handicap_statut]
+
+  - term_fr: Logement
+    slug: logement
+    fields:
+      - situation_logement     # locataire/proprietaire/heberge/sans_domicile
+      - type_logement          # non_meuble/meuble/foyer/chambre
+      - logement_conventionne  # boolean
+      - colocation             # boolean
+      - lien_parente_proprietaire # boolean
+      - loyer_part_mensuel_eur
+      - loyer_charges_mensuel_eur
+
+  - term_fr: Ressources
+    slug: ressources
+    fields:
+      - revenus_types_selection      # tableau d’enums
+      - revenu_salarie_net_imposable_12m_eur
+      - allocations_chomage_12m_eur
+      - bourses_lycee_12m_eur
+      - bourses_superieur_12m_eur
+      - chiffre_affaires_micro_entreprise_12m_eur
+
+inputs:
+  - term_fr: Statut professionnel
+    slug: statut_professionnel
+    data_type: enum
+    enum: [etudiant, actif, chomeur, retraite, inactif]
+
+  - term_fr: Sous-statut étudiant
+    slug: statut_professionnel_etudiant
+    data_type: enum
+    enum: [stage, alternance, salarie_hors_alternance, sans_emploi]
+
+  - term_fr: Mobilité étudiante
+    slug: mobilite_etudiante
+    data_type: enum
+    enum: [parcoursup_nouvelle_region, master1_nouvelle_zone, pas_de_mobilite]
+
+  - term_fr: Boursier
+    slug: boursier
+    data_type: boolean
+    notes: "Visible si mobilite_etudiante ∈ {parcoursup_nouvelle_region, master1_nouvelle_zone}"
+
+  - term_fr: Date de naissance
+    slug: date_naissance
+    data_type: string
+    format: date
+    canonical_input_format: "YYYY-MM-DD"
+    ui_format_hint: "jj/mm/aaaa"
+
+  - term_fr: Reconnaissance handicap
+    slug: handicap_statut
+    data_type: boolean
+
+  - term_fr: Situation matrimoniale
+    slug: situation_matrimoniale
+    data_type: enum
+    enum: [celibataire, pacse, marie, divorce, veuf, jeune_veuf, non_renseigne]
+
+  - term_fr: Code INSEE commune (destination)
+    slug: code_insee_commune_destination
+    data_type: string
+    format: "INSEE-5"
+    fallbacks: [code_postal_destination]
+
+  - term_fr: Situation de logement (futur)
+    slug: situation_logement
+    data_type: enum
+    enum: [locataire, proprietaire, heberge, sans_domicile]
+
+  - term_fr: Type de logement (si locataire)
+    slug: type_logement
+    data_type: enum
+    enum: [non_meuble, meuble, foyer, chambre]
+
+  - term_fr: Logement conventionné APL
+    slug: logement_conventionne
+    data_type: boolean
+
+  - term_fr: Colocation
+    slug: colocation
+    data_type: boolean
+
+  - term_fr: Lien de parenté avec propriétaire
+    slug: lien_parente_proprietaire
+    data_type: boolean
+
+  - term_fr: Part de loyer (hors charges) mensuelle
+    slug: loyer_part_mensuel_eur
+    data_type: number
+    unit: EUR
+    period: mensuel
+    min: 0
+
+  - term_fr: Charges locatives mensuelles
+    slug: loyer_charges_mensuel_eur
+    data_type: number
+    unit: EUR
+    period: mensuel
+    min: 0
+
+  - term_fr: Primo-accédant
+    slug: primo_accedant
+    data_type: boolean
+
+  - term_fr: Types de revenus sélectionnés
+    slug: revenus_types_selection
+    data_type: array
+    items_enum: [revenus_activite, revenus_chomage, revenus_bourses, revenus_entreprise, aucun_revenus]
+    constraints:
+      exclusive_with: {"aucun_revenus": "no_other_values"}
+
+  - term_fr: Salaire net imposable (12 mois)
+    slug: revenu_salarie_net_imposable_12m_eur
+    data_type: number
+    unit: EUR
+    period: "12_mois"
+
+  - term_fr: Allocations chômage (12 mois)
+    slug: allocations_chomage_12m_eur
+    data_type: number
+    unit: EUR
+    period: "12_mois"
+
+  - term_fr: Bourses lycée (12 mois)
+    slug: bourses_lycee_12m_eur
+    data_type: number
+    unit: EUR
+    period: "12_mois"
+
+  - term_fr: Bourses enseignement supérieur (12 mois)
+    slug: bourses_superieur_12m_eur
+    data_type: number
+    unit: EUR
+    period: "12_mois"
+
+  - term_fr: Chiffre d’affaires micro-entreprise (dernier annuel déclaré)
+    slug: chiffre_affaires_micro_entreprise_12m_eur
+    data_type: number
+    unit: EUR
+    period: "12_mois"
+
+outputs:
+  - term_fr: Est éligible
+    slug: est_eligible
+    data_type: boolean
+
+  - term_fr: Montant estimé
+    slug: montant_estime
+    data_type: number
+    unit: EUR
+    period: mensuel
+
+  - term_fr: Plage de montant
+    slug: plage_montant
+    data_type: object
+    fields: [min_eur, max_eur]
+
+notes:
+  - "Les IDs UI peuvent contenir des tirets pour la rétro-compatibilité, mais le slug canonique reste snake_case."
+  - "Si l’UI collecte en jj/mm/aaaa, convertir en YYYY-MM-DD avant calcul."

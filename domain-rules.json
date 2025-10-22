@@ -1,0 +1,73 @@
+{
+  "ids": {
+    "disallow_hyphen": true,
+    "require_snake_case": true,
+    "forbid_accents": true,
+    "auto_map": {
+      "statut-professionnel": "statut_professionnel",
+      "situation-professionnelle": "statut_professionnel_etudiant",
+      "etudiant-mobilite": "mobilite_etudiante",
+      "date-naissance": "date_naissance",
+      "statut-marital": "situation_matrimoniale",
+      "code-postal-nouvelle-ville": "code_insee_commune_destination",
+      "type-logement": "type_logement",
+      "logement-conventionne": "logement_conventionne",
+      "loyer-montant-mensuel": "loyer_part_mensuel_eur",
+      "loyer-montant-charges": "loyer_charges_mensuel_eur",
+      "primo-accedant": "primo_accedant",
+      "type-revenus": "revenus_types_selection",
+      "salaire-imposable": "revenu_salarie_net_imposable_12m_eur",
+      "montant-chomage": "allocations_chomage_12m_eur",
+      "montant-bourse-lycee": "bourses_lycee_12m_eur",
+      "montant-bourse-superieur": "bourses_superieur_12m_eur",
+      "montant-ca-micro-entreprise": "chiffre_affaires_micro_entreprise_12m_eur"
+    }
+  },
+  "values": {
+    "enum_normalization": {
+      "situation_matrimoniale": {
+        "Célibataire ou en union libre": "celibataire",
+        "Pacsé(e)": "pacse",
+        "Marié(e)": "marie",
+        "Divorcé(e)": "divorce",
+        "Veuf(ve)": "veuf",
+        "Veuf(ve) d'un(e) conjoint(e) décédé(e) dans l'année": "jeune_veuf",
+        "Je préfère ne pas renseigner cette information": "non_renseigne"
+      },
+      "statut_professionnel": {
+        "En études ou en formation (lycée, BTS, université, alternance...)": "etudiant",
+        "Salarié(e) ou Indépendant(e)": "actif",
+        "Inscrit(e) comme demandeur d'emploi": "chomeur",
+        "Retraité(e)": "retraite",
+        "Autre": "inactif"
+      },
+      "mobilite_etudiante": {
+        "parcoursup-nouvelle-region": "parcoursup_nouvelle_region",
+        "master-nouvelle-zone": "master1_nouvelle_zone",
+        "pas-de-mobilite": "pas_de_mobilite"
+      }
+    }
+  },
+  "geo": {
+    "canonical": "code_insee_commune",
+    "fallbacks": ["code_postal"],
+    "ui_autocomplete_function": "getInseeNumber",
+    "require_insee_on_submit": true
+  },
+  "dates": {
+    "ui_format_hint": "jj/mm/aaaa",
+    "storage_format": "YYYY-MM-DD",
+    "normalize_input": true
+  },
+  "money": {
+    "default_period": "mensuel",
+    "twelve_month_suffix": "_12m_eur",
+    "require_unit_eur": true,
+    "min_zero": true
+  },
+  "arrays": {
+    "exclusive_values": {
+      "revenus_types_selection": "aucun_revenus"
+    }
+  }
+}
