@@ -11,16 +11,37 @@ import {
 } from "../types/index.js";
 import { formatTimestamp, similarity } from "../utils/index.js";
 
+// Performance optimization: Cache file contents and ASTs
+const fileCache = new Map<string, string>();
+const astCache = new Map<string, any>();
+
 /**
- * Architecture Analyzer - Detects coupling, duplication, complexity issues
+ * Clear caches (useful for testing or memory management)
+ */
+export function clearAnalysisCache() {
+  fileCache.clear();
+  astCache.clear();
+}
+
+/**
+ * Architecture Analyzer - Detects coupling, duplication, complexity issues (OPTIMIZED)
  */
 export async function analyzeArchitecture(
   components: T_ComponentInfo[],
   repoPath: string
 ): Promise<T_ArchitectureAnalysis> {
+  console.log(`📊 Analyzing ${components.length} components...`);
+  
+  console.log("  → Calculating coupling metrics...");
   const coupling = calculateCoupling(components);
+  
+  console.log("  → Detecting code duplication...");
   const duplication = await detectDuplication(components, repoPath);
+  
+  console.log("  → Calculating complexity metrics...");
   const complexity = await calculateComplexity(components, repoPath);
+  
+  console.log("  → Detecting circular dependencies...");
   const circularDependencies = detectCircularDependencies(components);
 
   // Calculate overall health score (0-100)
@@ -80,38 +101,110 @@ function calculateCoupling(components: T_ComponentInfo[]): T_CouplingMetric[] {
 }
 
 /**
- * Detect code duplication across components
+ * Simple hash function for quick content comparison
+ */
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash;
+}
+
+/**
+ * Read and cache file content
+ */
+async function getCachedFileContent(filePath: string): Promise<string> {
+  let content = fileCache.get(filePath);
+  if (!content) {
+    try {
+      content = await readFile(filePath, "utf8");
+      fileCache.set(filePath, content);
+    } catch {
+      content = "";
+    }
+  }
+  return content;
+}
+
+/**
+ * Detect code duplication across components (OPTIMIZED)
  */
 async function detectDuplication(
   components: T_ComponentInfo[],
   repoPath: string
 ): Promise<T_DuplicationInstance[]> {
   const instances: T_DuplicationInstance[] = [];
-  const minLines = 10; // Minimum lines to consider duplication
-  const minSimilarity = 0.8; // 80% similarity threshold
+  const minLines = 10;
+  const minSimilarity = 0.85; // Increased to reduce false positives
+  const maxComparisons = 100000; // Cap for performance
+  const sizeTolerance = 0.5; // Skip if size differs by >50%
 
-  // Read all component contents
+  // Filter: skip test files and small files
+  const largeComponents = components.filter(
+    (c) =>
+      c.linesOfCode >= minLines &&
+      !c.path.includes(".test.") &&
+      !c.path.includes(".spec.")
+  );
+
+  console.log(`    Checking ${largeComponents.length} files (filtered from ${components.length})...`);
+
+  // Read all contents with caching
   const componentContents = await Promise.all(
-    components.map(async (c) => {
+    largeComponents.map(async (c) => {
       const fullPath = path.join(repoPath, c.path);
-      try {
-        const content = await readFile(fullPath, "utf8");
-        return { component: c, content, lines: content.split("\n") };
-      } catch {
-        return { component: c, content: "", lines: [] };
-      }
+      const content = await getCachedFileContent(fullPath);
+      return {
+        component: c,
+        content,
+        lines: content.split("\n"),
+        hash: hashCode(content),
+      };
     })
   );
 
-  // Compare each pair of components
+  // Smart comparison with early exits
+  let comparisons = 0;
+  let skippedSize = 0;
+  let skippedHash = 0;
+  let actualSimilarityChecks = 0;
+  
   for (let i = 0; i < componentContents.length; i++) {
     for (let j = i + 1; j < componentContents.length; j++) {
+      comparisons++;
+      
+      if (comparisons >= maxComparisons) {
+        console.log(`    ⚠️  Reached ${maxComparisons} comparisons, stopping early (found ${instances.length} duplications)...`);
+        console.log(`    📊 Stats: ${actualSimilarityChecks} similarity checks, ${skippedSize} skipped by size, ${skippedHash} skipped by hash`);
+        return instances;
+      }
+
       const a = componentContents[i];
       const b = componentContents[j];
 
+      // Quick filters before expensive similarity check
       if (a.lines.length < minLines || b.lines.length < minLines) continue;
 
-      // Calculate similarity
+      // Skip if size difference is too large
+      const sizeRatio =
+        Math.min(a.lines.length, b.lines.length) /
+        Math.max(a.lines.length, b.lines.length);
+      if (sizeRatio < sizeTolerance) {
+        skippedSize++;
+        continue;
+      }
+
+      // Skip if hashes are too different (optimization)
+      if (Math.abs(a.hash - b.hash) > 100000) {
+        skippedHash++;
+        continue;
+      }
+
+      // Now do the expensive similarity check
+      actualSimilarityChecks++;
       const sim = similarity(a.content, b.content);
 
       if (sim >= minSimilarity) {
@@ -129,52 +222,94 @@ async function detectDuplication(
     }
   }
 
+  console.log(`    ✅ Completed ${comparisons} comparisons: ${actualSimilarityChecks} similarity checks, ${skippedSize} skipped by size, ${skippedHash} skipped by hash`);
   return instances;
 }
 
 /**
- * Calculate complexity metrics for components
+ * Calculate complexity metrics for components (OPTIMIZED with batching)
  */
 async function calculateComplexity(
   components: T_ComponentInfo[],
   repoPath: string
 ): Promise<T_ComplexityMetric[]> {
   const metrics: T_ComplexityMetric[] = [];
+  const batchSize = 20;
+  let processed = 0;
 
-  for (const component of components) {
-    const fullPath = path.join(repoPath, component.path);
-    try {
-      const content = await readFile(fullPath, "utf8");
-      const ast = parse(content, {
+  console.log(`    Analyzing complexity for ${components.length} files...`);
+
+  // Process in batches for better performance
+  for (let i = 0; i < components.length; i += batchSize) {
+    const batch = components.slice(i, Math.min(i + batchSize, components.length));
+
+    // Process batch in parallel
+    const batchMetrics = await Promise.all(
+      batch.map(async (component) => {
+        processed++;
+        if (processed % 50 === 0) {
+          console.log(`    Processed ${processed}/${components.length} files...`);
+        }
+        return analyzeComponentComplexity(component, repoPath);
+      })
+    );
+
+    // Flatten and add to metrics
+    metrics.push(...batchMetrics.flat());
+  }
+
+  return metrics;
+}
+
+/**
+ * Analyze complexity for a single component (with caching)
+ */
+async function analyzeComponentComplexity(
+  component: T_ComponentInfo,
+  repoPath: string
+): Promise<T_ComplexityMetric[]> {
+  const metrics: T_ComplexityMetric[] = [];
+  const fullPath = path.join(repoPath, component.path);
+
+  try {
+    // Use cached content
+    const content = await getCachedFileContent(fullPath);
+    if (!content) return metrics;
+
+    // Use cached AST or parse
+    let ast = astCache.get(fullPath);
+    if (!ast) {
+      ast = parse(content, {
         loc: true,
         range: true,
         jsx: component.path.endsWith("x"),
       });
-
-      // Extract functions from AST
-      const functions = extractFunctions(ast, content);
-
-      for (const func of functions) {
-        const cyclomatic = calculateCyclomaticComplexity(func.body);
-        const cognitive = calculateCognitiveComplexity(func.body);
-
-        let score: T_ComplexityMetric["score"] = "simple";
-        if (cyclomatic > 20 || cognitive > 15) score = "very-complex";
-        else if (cyclomatic > 10 || cognitive > 7) score = "complex";
-        else if (cyclomatic > 5 || cognitive > 3) score = "moderate";
-
-        metrics.push({
-          file: component.path,
-          function: func.name,
-          cyclomaticComplexity: cyclomatic,
-          cognitiveComplexity: cognitive,
-          linesOfCode: func.lines,
-          score,
-        });
-      }
-    } catch {
-      // Skip files that can't be parsed
+      astCache.set(fullPath, ast);
     }
+
+    // Extract functions from AST
+    const functions = extractFunctions(ast, content);
+
+    for (const func of functions) {
+      const cyclomatic = calculateCyclomaticComplexity(func.body);
+      const cognitive = calculateCognitiveComplexity(func.body);
+
+      let score: T_ComplexityMetric["score"] = "simple";
+      if (cyclomatic > 20 || cognitive > 15) score = "very-complex";
+      else if (cyclomatic > 10 || cognitive > 7) score = "complex";
+      else if (cyclomatic > 5 || cognitive > 3) score = "moderate";
+
+      metrics.push({
+        file: component.path,
+        function: func.name,
+        cyclomaticComplexity: cyclomatic,
+        cognitiveComplexity: cognitive,
+        linesOfCode: func.lines,
+        score,
+      });
+    }
+  } catch {
+    // Skip files that can't be parsed
   }
 
   return metrics;
