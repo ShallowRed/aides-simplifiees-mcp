@@ -21,24 +21,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Install MCP agent dependencies
         run: |
           cd /tmp
           git clone https://github.com/betagouv/aides-simplifiees-mcp.git
           cd aides-simplifiees-mcp
-          npm ci
-          npm run build
+          pnpm install --frozen-lockfile
+          pnpm run build
 
       - name: Analyze repository
         run: |
           cd /tmp/aides-simplifiees-mcp
-          npm run dev:cli analyze-arch ${{ github.repository_owner }} ${{ github.event.repository.name }} ${{ github.ref_name }} > arch-report.txt 2>&1 || true
+          pnpm run dev:cli analyze-arch ${{ github.repository_owner }} ${{ github.event.repository.name }} ${{ github.ref_name }} > arch-report.txt 2>&1 || true
           cat arch-report.txt
 
       - name: Upload architecture report

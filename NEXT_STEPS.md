@@ -12,13 +12,13 @@ Try each tool to verify they work:
 
 ```bash
 # Test domain linter (should work immediately on this repo)
-npm run lint:domain
+pnpm run lint:domain
 
 # Test GitHub analyzer (will clone and analyze the repo)
-npm run dev:cli analyze-repo betagouv aides-simplifiees-app
+pnpm run dev:cli analyze-repo betagouv aides-simplifiees-app
 
 # Test architecture analyzer
-npm run dev:cli analyze-arch betagouv aides-simplifiees-app
+pnpm run dev:cli analyze-arch betagouv aides-simplifiees-app
 ```
 
 **Expected output**: You should see detailed reports for each command.
@@ -67,13 +67,13 @@ Run the analyzer on your actual repositories to get baseline metrics:
 
 ```bash
 # Analyze main app
-npm run dev:cli analyze-repo betagouv aides-simplifiees-app > reports/app-analysis.txt
+pnpm run dev:cli analyze-repo betagouv aides-simplifiees-app > reports/app-analysis.txt
 
 # Analyze docs
-npm run dev:cli analyze-repo betagouv aides-simplifiees-docs > reports/docs-analysis.txt
+pnpm run dev:cli analyze-repo betagouv aides-simplifiees-docs > reports/docs-analysis.txt
 
 # Check architecture health
-npm run dev:cli analyze-arch betagouv aides-simplifiees-app > reports/architecture.txt
+pnpm run dev:cli analyze-arch betagouv aides-simplifiees-app > reports/architecture.txt
 ```
 
 **Goal**: Understand the current state of your codebase.

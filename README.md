@@ -58,8 +58,8 @@ Generates comprehensive health reports:
 ### Installation
 
 ```bash
-npm install
-npm run build
+pnpm install
+pnpm run build
 ```
 
 ### Usage as MCP Server
@@ -84,13 +84,13 @@ Add to your MCP client configuration (e.g., Claude Desktop):
 
 ```bash
 # Lint domain terms
-npm run lint:domain
+pnpm run lint:domain
 
 # Analyze architecture
-npm run dev:cli analyze-architecture
+pnpm run dev:cli analyze-architecture
 
 # Check sync status
-npm run dev:cli check-sync
+pnpm run dev:cli check-sync
 ```
 
 ## 📁 Project Structure
